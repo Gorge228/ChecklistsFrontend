@@ -43,6 +43,7 @@
 ```bash
 git clone git@github.com:Gorge228/ChecklistsFrontend.git
 cd ChecklistsFrontend
+cd src
 
 ### 2.Установка зависимостей
 npm install
