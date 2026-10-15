@@ -45,7 +45,7 @@ export class MockAuthRepository implements IAuthRepository {
     async login(credentials: ILoginRequest): Promise<ILoginResponse> {
         const record = TEST_USERS[credentials.username.trim()];
         if (!record || record.pass !== credentials.password) {
-            throw new Error('Неверный логин или пароль тестовой учетной записи');
+            throw new Error('Неверный логин или пароль');
         }
 
         this.currentUser = record.user;
@@ -60,6 +60,8 @@ export class MockAuthRepository implements IAuthRepository {
     }
 
     async getMe(): Promise<IUser> {
+        const saved = localStorage.getItem('polipak_current_user');
+        if (saved) return JSON.parse(saved);
         return this.currentUser;
     }
 
@@ -69,7 +71,35 @@ export class MockAuthRepository implements IAuthRepository {
 }
 
 export class MockResultRepository implements IResultRepository {
-    private results: IChecklistResultItem[] = [];
+    private results: IChecklistResultItem[] = [
+        {
+            id: 101,
+            template: 1,
+            template_name: 'Ежесменный осмотр экструдера выдува пленки №1',
+            equipment_uid: 'EXTRUDER-01',
+            user_uid: 'operator_ivanov',
+            shift_number: 'DAY',
+            shift_date: new Date().toISOString().slice(0, 10),
+            shift_time: '08:15',
+            is_completed: false,
+            is_draft: false,
+            has_violations: false,
+            created_at: new Date().toISOString(),
+            general_comment: 'Оборудование в норме',
+            signatures: [
+                { role: 'AUTHOR', user_uid: 'operator_ivanov', signed_at: new Date().toISOString(), comment: 'Смена сдана' }
+            ],
+            groups: [
+                {
+                    group_id: 1,
+                    group_name: '1. Механическая часть и безопасность',
+                    answers: [
+                        { field_id: 1, field_name: 'Защитное ограждение привода на месте', field_type: 'RADIO', field_type_display: 'Радио', value: 'true', is_violation: false }
+                    ]
+                }
+            ]
+        }
+    ];
 
     async getList(): Promise<IChecklistResultItem[]> {
         return this.results;
@@ -96,21 +126,23 @@ export class MockResultRepository implements IResultRepository {
             shift_time: now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
             is_completed: false,
             is_draft: payload.is_draft,
-            has_violations: payload.groups.some((g) => g.answers.some((a) => a.value === 'НЕТ')),
+            has_violations: false,
             created_at: now.toISOString(),
             general_comment: payload.general_comment || null,
-            signatures: [],
+            signatures: [
+                { role: 'AUTHOR', user_uid: payload.user_uid, signed_at: now.toISOString(), comment: 'Сдал смену' }
+            ],
             groups: payload.groups.map((g) => ({
                 group_id: g.group_id,
                 group_name: `Узел #${g.group_id}`,
                 answers: g.answers.map((a) => ({
                     field_id: a.field_id,
-                    field_name: `Поле #${a.field_id}`,
+                    field_name: `Вопрос #${a.field_id}`,
                     field_type: 'STRING',
                     field_type_display: 'Строка',
                     value: a.value,
                     comment: a.comment,
-                    is_violation: a.value === 'НЕТ',
+                    is_violation: false,
                 })),
             })),
         };
@@ -148,7 +180,7 @@ export class MockResultRepository implements IResultRepository {
             signed_at: new Date().toISOString(),
             comment: payload.comment || null,
         });
-        if (payload.is_closing) {
+        if (payload.is_closing || payload.role.toUpperCase() === 'APPROVER') {
             item.is_completed = true;
         }
         return { message: 'Подписано', is_completed: item.is_completed };
@@ -159,8 +191,8 @@ export class MockTemplateRepository implements ITemplateRepository {
     private templates: ITemplate[] = [
         {
             id: 1,
-            name: 'Ежесменный осмотр экструдера пленки №3',
-            equipment_uid: 'EXTRUDER-LINE-03',
+            name: 'Ежесменный осмотр экструдера выдува пленки №1',
+            equipment_uid: 'EXTRUDER-01',
             checklist_type: 'INSPECTION',
             checklist_type_display: 'Осмотр оборудования',
             is_draft: false,
@@ -168,13 +200,12 @@ export class MockTemplateRepository implements ITemplateRepository {
             updated_at: new Date().toISOString(),
             groups: [
                 {
-                    id: 101,
+                    id: 1,
                     name: '1. Механическая часть и безопасность',
                     order: 1,
                     page_break: false,
                     fields: [
-                        { id: 1, name: 'Наличие защитных ограждений', field_type: 'RADIO', field_type_display: 'Радио', is_required: true, order: 1 },
-                        { id: 2, name: 'Температура цилиндра (°C)', field_type: 'INTEGER', field_type_display: 'Число', is_required: true, order: 2, default_value: '185' },
+                        { id: 1, name: 'Защитное ограждение привода на месте', field_type: 'RADIO', field_type_display: 'Радио', is_required: true, order: 1 }
                     ],
                 },
             ],

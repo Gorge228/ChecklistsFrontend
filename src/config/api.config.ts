@@ -1,14 +1,18 @@
 export const APP_CONFIG = {
-    // Переключение: false — реальный Django бэкенд, true — автономный мок
-    USE_MOCKS: false,
+    /**
+     * Автоматическое переключение:
+     * Если запущено через `npm run dev:mock` — включаются автономные моки в памяти.
+     * Если запущено через `npm run dev` — подключается к реальному Django.
+     */
+    USE_MOCKS: import.meta.env.MODE === 'mock' || false,
 
-    // Базовый протокол и адрес бэкенда Django
+    // Адрес сервера Django
     BACKEND_URL: 'http://127.0.0.1:8000',
 
-    // Префикс API согласно спецификации Swagger
+    // Префикс API
     API_BASE_URL: '/api/v1',
 
-    // Таймаут сетевых запросов (15 сек)
+    // Таймаут сетевых запросов
     TIMEOUT_MS: 15000,
 } as const;
 
